@@ -212,6 +212,18 @@ public class DashboardView extends JFrame {
 
         btnTambah.addActionListener(e -> {
             try {
+                 // VALIDASI KOSONG
+                if (tfNik.getText().trim().isEmpty()
+                        || tfNama.getText().trim().isEmpty()
+                        || tfJabatan.getText().trim().isEmpty()) {
+                    JOptionPane.showMessageDialog(null,"Semua field wajib diisi!");
+                    return;
+                }
+                // VALIDASI NIK
+                if (!tfNik.getText().trim().matches("\\d+")) {
+                    JOptionPane.showMessageDialog(null,"NIK harus angka!");
+                    return;
+                }
                 PegawaiTetap p = new PegawaiTetap();
                 p.setNik(tfNik.getText());
                 p.setNama(tfNama.getText());
@@ -229,6 +241,20 @@ public class DashboardView extends JFrame {
         btnUpdate.addActionListener(e -> {
             try {
                 if (selectedId == -1) { JOptionPane.showMessageDialog(null, "Pilih data terlebih dahulu"); return; }
+                // VALIDASI KOSONG
+               if (tfNik.getText().trim().isEmpty()
+                       || tfNama.getText().trim().isEmpty()
+                       || tfJabatan.getText().trim().isEmpty()) {
+                   JOptionPane.showMessageDialog(
+                           null,
+                           "Semua field wajib diisi!");
+                   return;
+               }
+               // VALIDASI NIK
+               if (!tfNik.getText().trim().matches("\\d+")) {
+                   JOptionPane.showMessageDialog(null,"NIK harus angka!");
+                   return;
+               }
                 PegawaiTetap p = new PegawaiTetap();
                 p.setIdPegawai(selectedId);
                 p.setNik(tfNik.getText());

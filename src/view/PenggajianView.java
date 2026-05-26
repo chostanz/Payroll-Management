@@ -329,17 +329,19 @@ public class PenggajianView extends JFrame {
                 }
 
                 dispose();
-
-            } catch (NumberFormatException ex) {
-                JOptionPane.showMessageDialog(null, "Input tidak valid: " + ex.getMessage());
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(null, ex.getMessage());
-            }
+                } catch (NumberFormatException ex) {
+                    JOptionPane.showMessageDialog(null, "Input tidak valid: " + ex.getMessage());
+                } catch (Exception ex) {
+                    JOptionPane.showMessageDialog(null, ex.getMessage());
+                }
         });
 
         btnCetak.addActionListener(e -> {
-            try { areaSlip.print(); }
-            catch (Exception ex) { JOptionPane.showMessageDialog(null, ex.getMessage()); }
+            try { 
+                areaSlip.print(); 
+                JOptionPane.showMessageDialog(null,"Slip gaji berhasil dicetak.");
+            }catch (Exception ex) { 
+                JOptionPane.showMessageDialog(null, ex.getMessage()); }
         });
     }
     
