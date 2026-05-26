@@ -330,7 +330,7 @@ public class PenggajianView extends JFrame {
 
                 dispose();
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(null, "Input tidak valid: " + ex.getMessage());
+                    JOptionPane.showMessageDialog(null, "Mohon isi semua data dengan angka yang valid");
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(null, ex.getMessage());
                 }
