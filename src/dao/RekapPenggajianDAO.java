@@ -62,7 +62,7 @@ public class RekapPenggajianDAO {
     model.addColumn("Gaji / Upah");  
     model.addColumn("Tunjangan");    
     model.addColumn("Bonus");        
-    model.addColumn("Terlambat");    
+    model.addColumn("Absen");    
     model.addColumn("Potongan");     
     model.addColumn("Total Gaji");   
     model.addColumn("Status");       
@@ -74,7 +74,7 @@ public class RekapPenggajianDAO {
             "  COALESCE(pt.gaji_pokok, pk.upah_per_bulan, pp.upah_per_jam, 0) AS gaji_pokok, " +
             "  COALESCE(pt.tunjangan, 0) AS tunjangan, " +
             "  COALESCE(pg.bonus, 0) AS bonus, " +
-            "  COALESCE(pg.jumlah_terlambat, 0) AS jumlah_terlambat, " +
+            "  COALESCE(pg.jumlah_absen, 0) AS jumlah_absen, " +
             "  pg.total_potongan, pg.gaji_bersih, " +
             "  COALESCE(pg.keterangan, 'Belum') AS status " +
             "FROM pegawai p " +
@@ -96,7 +96,7 @@ public class RekapPenggajianDAO {
             double gajiPokok = rs.getDouble("gaji_pokok");
             double tunjangan = rs.getDouble("tunjangan");
             double bonus     = rs.getDouble("bonus");
-            int terlambat    = rs.getInt("jumlah_terlambat");
+            int absen    = rs.getInt("jumlah_absen");
             double potongan  = rs.getDouble("total_potongan");
             double totalGaji = rs.getDouble("gaji_bersih");
             String status    = rs.getString("status");
@@ -111,7 +111,7 @@ public class RekapPenggajianDAO {
                 "Rp " + String.format("%,.0f", gajiPokok),                 
                 "Rp " + String.format("%,.0f", tunjangan),                 
                 bonus,                                                     
-                terlambat,                                                 
+                absen,                                                 
                 idPenggajian > 0 ? "Rp " + String.format("%,.0f", potongan) : "-", 
                 idPenggajian > 0 ? "Rp " + String.format("%,.0f", totalGaji) : "-", 
                 status,                                                    

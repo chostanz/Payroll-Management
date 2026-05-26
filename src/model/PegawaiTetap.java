@@ -5,12 +5,12 @@ public class PegawaiTetap extends Pegawai {
     private double gajiPokok;
     private double tunjangan;
     private double bonus;
-    private int terlambat;
+    private int absen;
 
     @Override
     public double hitungGaji() {
 
-        return (gajiPokok + tunjangan + bonus) - hitungPotongan(terlambat);
+        return (gajiPokok + tunjangan + bonus) - hitungPotongan(absen);
     }
 
     public double getGajiPokok() {
@@ -37,11 +37,11 @@ public class PegawaiTetap extends Pegawai {
         this.bonus = bonus;
     }
 
-    public int getTerlambat() {
-        return terlambat;
+    public int getAbsen() {
+        return absen;
     }
 
-    public void setTerlambat(int terlambat) {
-        this.terlambat = terlambat;
+    public void setAbsen(int absen) {
+        this.absen = absen;
     }
 }

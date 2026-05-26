@@ -22,7 +22,7 @@ public class PenggajianController {
             double totalPotongan,
             double gajiBersih,
             double bonus,
-            int jumlahTerlambat
+            int jumlahAbsen
     ) {
         dao.updatePenggajian(
                 idPenggajian,
@@ -30,7 +30,7 @@ public class PenggajianController {
                 totalPotongan,
                 gajiBersih,
                 bonus,
-                jumlahTerlambat
+                jumlahAbsen
         );
     }
 

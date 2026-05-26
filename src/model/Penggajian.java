@@ -10,7 +10,7 @@ public class Penggajian {
     private int tahun;
 
     private double bonus;
-    private int jumlahTerlambat;
+    private int jumlahAbsen;
 
     private double totalPotongan;
     private double gajiKotor;
@@ -61,12 +61,12 @@ public class Penggajian {
         this.bonus = bonus;
     }
 
-    public int getJumlahTerlambat() {
-        return jumlahTerlambat;
+    public int getJumlahAbsen() {
+        return jumlahAbsen;
     }
 
-    public void setJumlahTerlambat(int jumlahTerlambat) {
-        this.jumlahTerlambat = jumlahTerlambat;
+    public void setJumlahAbsen(int jumlahAbsen) {
+        this.jumlahAbsen = jumlahAbsen;
     }
 
     public double getTotalPotongan() {

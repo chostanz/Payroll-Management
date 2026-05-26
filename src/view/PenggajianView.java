@@ -318,7 +318,7 @@ public class PenggajianView extends JFrame {
                     Penggajian p = new Penggajian();
                     p.setIdPegawai(idPegawai);
                     p.setBonus(bonus);
-                    p.setJumlahTerlambat(absen);
+                    p.setJumlahAbsen(absen);
                     p.setTotalPotongan(totalPotongan);
                     p.setGajiKotor(gajiBruto);
                     p.setGajiBersih(gajiBersih);

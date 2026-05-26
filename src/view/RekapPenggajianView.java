@@ -101,9 +101,9 @@ public class RekapPenggajianView extends JFrame {
                 String nama         = tableDetail.getValueAt(row, 3).toString();
                 String jenis        = tableDetail.getValueAt(row, 5).toString();
                 double bonus        = Double.parseDouble(tableDetail.getValueAt(row, 8).toString());
-                int    terlambat    = Integer.parseInt(tableDetail.getValueAt(row, 9).toString());
+                int    absen    = Integer.parseInt(tableDetail.getValueAt(row, 9).toString());
 
-                PenggajianView penggajianView = new PenggajianView(idPenggajian, idPegawai, nama, jenis, bonus, terlambat);
+                PenggajianView penggajianView = new PenggajianView(idPenggajian, idPegawai, nama, jenis, bonus, absen);
 
                 // Panggil muatData() otomatis saat PenggajianView ditutup
                 penggajianView.addWindowListener(new WindowAdapter() {

@@ -10,8 +10,8 @@ public abstract class Pegawai {
 
     public abstract double hitungGaji();
 
-    public double hitungPotongan(int terlambat) {
-        return 100000 + (terlambat * 20000);
+    public double hitungPotongan(int absen) {
+        return 100000 + (absen * 20000);
     }
 
     public int getIdPegawai() {

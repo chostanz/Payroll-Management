@@ -110,7 +110,7 @@ public class PenggajianDAO {
                     + "bulan,"
                     + "tahun,"
                     + "bonus,"
-                    + "jumlah_terlambat,"
+                    + "jumlah_absen,"
                     + "total_potongan,"
                     + "gaji_kotor,"
                     + "gaji_bersih,"
@@ -125,7 +125,7 @@ public class PenggajianDAO {
             ps.setInt(2,p.getBulan());
             ps.setInt(3,p.getTahun());
             ps.setDouble(4,p.getBonus());
-            ps.setInt(5,p.getJumlahTerlambat());
+            ps.setInt(5,p.getJumlahAbsen());
             ps.setDouble(6,p.getTotalPotongan());
             ps.setDouble(7,p.getGajiKotor());
             ps.setDouble(8,p.getGajiBersih());
@@ -174,14 +174,14 @@ public class PenggajianDAO {
         double totalPotongan,
         double gajiBersih,
         double bonus,
-        int jumlahTerlambat
+        int jumlahAbsen
     ) {
     try {
 
         String query =
             "UPDATE penggajian SET " +
             "bonus=?, " +
-            "jumlah_terlambat=?, " +
+            "jumlah_absen=?, " +
             "gaji_kotor=?, " +
             "total_potongan=?, " +
             "gaji_bersih=? " +
@@ -190,7 +190,7 @@ public class PenggajianDAO {
         PreparedStatement ps = conn.prepareStatement(query);
 
         ps.setDouble(1, bonus);
-        ps.setInt(2, jumlahTerlambat);
+        ps.setInt(2, jumlahAbsen);
         ps.setDouble(3, gajiKotor);
         ps.setDouble(4, totalPotongan);
         ps.setDouble(5, gajiBersih);
