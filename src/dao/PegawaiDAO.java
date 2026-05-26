@@ -22,18 +22,16 @@ public class PegawaiDAO {
         try {
             String query =
                     "INSERT INTO pegawai "
-                    + "(nik,nama,jenis_kelamin,"
+                    + "(nik,nama,"
                     + "jabatan,jenis_pegawai)"
-                    + "VALUES(?,?,?,?,?)";
+                    + "VALUES(?,?,?,?)";
 
             PreparedStatement ps = conn.prepareStatement(query);
 
             ps.setString(1, p.getNik());
             ps.setString(2, p.getNama());
-            // default sementara
-            ps.setString(3, "Laki-laki");
-            ps.setString(4, p.getJabatan());
-            ps.setString(5, p.getJenisPegawai());
+            ps.setString(3, p.getJabatan());
+            ps.setString(4, p.getJenisPegawai());
             ps.executeUpdate();
         } catch (Exception e) {
             System.out.println(e.getMessage());
