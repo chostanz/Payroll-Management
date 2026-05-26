@@ -5,238 +5,478 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.JTableHeader;
 import java.awt.*;
-import java.awt.event.FocusAdapter;
-import java.awt.event.FocusEvent;
+import java.awt.event.*;
+import java.util.Calendar;
 
+import static view.DashboardView.*;
 public class RekapPenggajianView extends JFrame {
 
-    // ── Color Palette ────────────────────────────────────────────────────────
-    static final Color BG        = new Color(240, 242, 248);
-    static final Color NAVY      = new Color(25, 35, 60);
-    static final Color BLUE      = new Color(66, 133, 244);
-    static final Color LIME      = new Color(180, 220, 60);
-    static final Color DARK      = new Color(45, 50, 70);
-    static final Color LABEL_CLR = new Color(100, 110, 140);
-    static final Color FIELD_BOR = new Color(210, 215, 230);
+    private final RekapPenggajianController controller = new RekapPenggajianController();
 
-    // Tabel rekap bulanan (atas)
-    JTable      tableRekap  = new JTable();
-    JScrollPane scrollRekap = new JScrollPane(tableRekap);
-
-    // Tabel detail pegawai (bawah)
-    JTable      tableDetail  = new JTable();
-    JScrollPane scrollDetail = new JScrollPane(tableDetail);
-
-    // Filter bulan & tahun
-    JComboBox<String> cbBulan = new JComboBox<>(new String[]{
-        "1","2","3","4","5","6","7","8","9","10","11","12"
+    // ── Filter ───────────────────────────────────────────────────────────────
+    private final JComboBox<String> cbBulan = new JComboBox<>(new String[]{
+        "Januari","Februari","Maret","April","Mei","Juni",
+        "Juli","Agustus","September","Oktober","November","Desember"
     });
-    JTextField tfTahun  = new JTextField("2026");
-    JButton    btnCari  = buatTombol("Lihat Detail", BLUE,  Color.WHITE);
-    JButton    btnRefresh = buatTombol("↻ Refresh",  NAVY,  Color.WHITE);
+    private final JComboBox<String> cbTahun = new JComboBox<>(new String[]{
+        "2023","2024","2025","2026"
+    });
 
-    RekapPenggajianController controller;
+    // ── Tabel detail ─────────────────────────────────────────────────────────
+    private final JTable      tableDetail = new JTable();
+    private final JScrollPane scrollDetail = new JScrollPane(tableDetail);
+
+    // ── Kartu summary ────────────────────────────────────────────────────────
+    private JLabel lblTotalPegawai, lblTotalGaji, lblSudah, lblBelum;
+
+    // ── Tombol ───────────────────────────────────────────────────────────────
+    private final JButton btnFilter  = buatTombol("Filter",         BLUE,      Color.WHITE);
+    private final JButton btnKembali = buatTombol("← Data Pegawai", FIELD_BOR, DARK);
+    private final JButton btnRefresh = buatTombol("↻ Refresh",      FIELD_BOR, DARK);
+
+    private static final int W = 980;
+    private static final int H = 680;
 
     public RekapPenggajianView() {
-        controller = new RekapPenggajianController();
-
-        setTitle("Rekap Penggajian");
-        setSize(900, 660);
+        setTitle("Dashboard Payroll – Rekap Gaji");
+        setSize(W, H);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
-        // ── Root ─────────────────────────────────────────────────────────────
         JPanel root = new JPanel(null);
         root.setBackground(BG);
         setContentPane(root);
 
-        // ── Header ───────────────────────────────────────────────────────────
+        buatHeader(root);
+        buatTabNav(root);
+        buatKartuSummary(root);
+        buatFilterBar(root);
+        buatTabelDetail(root);
+        buatTombolBar(root);
+
+        // Default: bulan & tahun sekarang
+        bulanTahunSekarang();
+        muatData();
+
+        // Listeners
+        btnFilter.addActionListener(e -> muatData());
+        btnRefresh.addActionListener(e -> muatData());
+        btnKembali.addActionListener(e -> {
+            new DashboardView().setVisible(true);
+            dispose();
+        });
+        tableDetail.addMouseListener(new java.awt.event.MouseAdapter() {
+    @Override
+    public void mouseClicked(java.awt.event.MouseEvent e) {
+
+        int row = tableDetail.rowAtPoint(e.getPoint());
+        int col = tableDetail.columnAtPoint(e.getPoint());
+
+        // kolom aksi
+        if (col == 10) {
+
+            // Ambil id_penggajian dari kolom 0 (tersembunyi)
+            int idPenggajian = Integer.parseInt(tableDetail.getValueAt(row, 0).toString());
+
+            // Cegah aksi kalau pegawai belum punya data penggajian bulan ini
+            if (idPenggajian == 0) {
+                JOptionPane.showMessageDialog(null,
+                    "Pegawai ini belum diproses penggajiannya bulan ini.");
+                return;
+            }
+        
+            JPopupMenu menu = new JPopupMenu();
+
+            JMenuItem editItem = new JMenuItem("✏ Edit Penggajian");
+            JMenuItem lunasItem = new JMenuItem("✔ Tandai Lunas");
+            JMenuItem batalItem = new JMenuItem("↩ Batalkan Pembayaran");
+
+            menu.add(editItem);
+            menu.add(lunasItem);
+            menu.add(batalItem);
+            menu.show(tableDetail, e.getX(), e.getY());
+            // EDIT
+            editItem.addActionListener(ev -> { bukaFormEdit(row, idPenggajian);
+            });
+
+            // TANDAI LUNAS
+            lunasItem.addActionListener(ev -> {
+                if (JOptionPane.showConfirmDialog(null,
+                    "Tandai penggajian sebagai lunas?", "Konfirmasi",
+                    JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                controller.updateStatusBayar(idPenggajian, "Lunas"); // → DB
+                tableDetail.setValueAt("Lunas", row, 9);             // → tampilan
+                JOptionPane.showMessageDialog(null, "Status diubah menjadi Lunas");
+            }
+            });
+
+            // BATALKAN PEMBAYARAN
+            batalItem.addActionListener(ev -> {
+            if (JOptionPane.showConfirmDialog(null,
+                              "Batalkan pembayaran?", "Konfirmasi",
+                              JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                          controller.updateStatusBayar(idPenggajian, "Belum"); // → DB
+                          tableDetail.setValueAt("Belum", row, 9);             // → tampilan
+                          JOptionPane.showMessageDialog(null, "Pembayaran dibatalkan");
+                      }
+                      });
+                  }
+    }
+});
+    }
+    
+
+    // ── Muat data (summary + tabel) ──────────────────────────────────────────
+    private void muatData() {
+        int bulan = cbBulan.getSelectedIndex() + 1;
+        int tahun = Integer.parseInt(cbTahun.getSelectedItem().toString());
+
+        // Update kartu
+        int[] s = controller.getSummary(bulan, tahun);
+        lblTotalPegawai.setText(String.valueOf(s[0]));
+        lblTotalGaji.setText("Rp " + String.format("%,.0f", (double) s[3]));
+        lblSudah.setText(s[1] + " orang");
+        lblBelum.setText(s[2] + " orang");
+
+        // Update tabel detail
+        controller.tampilDetailBulan(tableDetail, bulan, tahun);
+        styleTable(tableDetail);
+    }
+private void bukaFormEdit(int row, int idPenggajian) {
+    // Ambil nilai dari tabel, bersihkan format "Rp 1.000" → "1000"
+    String rawPotongan   = tableDetail.getValueAt(row, 7).toString()
+                            .replace("Rp ", "").replace(".", "").replace(",", "").trim();
+    String rawGajiBersih = tableDetail.getValueAt(row, 8).toString()
+                            .replace("Rp ", "").replace(".", "").replace(",", "").trim();
+    if ("-".equals(rawPotongan))   rawPotongan   = "0";
+    if ("-".equals(rawGajiBersih)) rawGajiBersih = "0";
+
+    JDialog dialog = new JDialog(this, "Edit Penggajian", true);
+    dialog.setSize(350, 210);
+    dialog.setLocationRelativeTo(this);
+    dialog.setLayout(null);
+
+    JLabel lPotongan   = new JLabel("Total Potongan");
+    JLabel lGajiBersih = new JLabel("Gaji Bersih");
+    JTextField tfPotongan   = new JTextField(rawPotongan);
+    JTextField tfGajiBersih = new JTextField(rawGajiBersih);
+    JButton btnSimpan = new JButton("Simpan");
+
+    lPotongan   .setBounds(20, 15,  120, 25);
+    tfPotongan  .setBounds(20, 40,  280, 30);
+    lGajiBersih .setBounds(20, 82,  120, 25);
+    tfGajiBersih.setBounds(20, 107, 280, 30);
+    btnSimpan   .setBounds(20, 155, 280, 35);
+
+    dialog.add(lPotongan);   dialog.add(tfPotongan);
+    dialog.add(lGajiBersih); dialog.add(tfGajiBersih);
+    dialog.add(btnSimpan);
+
+    btnSimpan.addActionListener(e -> {
+        try {
+            double potongan   = Double.parseDouble(tfPotongan.getText());
+            double gajiBersih = Double.parseDouble(tfGajiBersih.getText());
+            double gajiKotor  = gajiBersih + potongan;
+
+            // Update ke DB
+            controller.updatePenggajian(idPenggajian, gajiKotor, potongan, gajiBersih);
+
+            // Update tampilan tabel
+            tableDetail.setValueAt("Rp " + String.format("%,.0f", potongan),   row, 7);
+            tableDetail.setValueAt("Rp " + String.format("%,.0f", gajiBersih), row, 8);
+
+            JOptionPane.showMessageDialog(null, "Data berhasil diupdate!");
+            dialog.dispose();
+        } catch (NumberFormatException ex) {
+            JOptionPane.showMessageDialog(null, "Input harus berupa angka!");
+        }
+    });
+
+    dialog.setVisible(true);
+    }
+    // ────────────────────────────────────────────────────────────────────────
+    // HEADER
+    // ────────────────────────────────────────────────────────────────────────
+    private void buatHeader(JPanel root) {
         JPanel header = new JPanel(null);
         header.setBackground(NAVY);
-        header.setBounds(0, 0, 900, 56);
+        header.setBounds(0, 0, W, 56);
         root.add(header);
 
-        JLabel title = new JLabel("Rekap Penggajian");
-        title.setFont(new Font("SansSerif", Font.BOLD, 16));
-        title.setForeground(Color.WHITE);
-        title.setBounds(20, 14, 250, 28);
-        header.add(title);
+        JLabel titleLbl = new JLabel("Dashboard Payroll");
+        titleLbl.setFont(new Font("SansSerif", Font.BOLD, 18));
+        titleLbl.setForeground(Color.WHITE);
+        titleLbl.setBounds(24, 14, 260, 28);
+        header.add(titleLbl);
 
-        JLabel sub = new JLabel("Ringkasan penggajian per bulan");
-        sub.setFont(new Font("SansSerif", Font.PLAIN, 11));
-        sub.setForeground(new Color(160, 175, 210));
-        sub.setBounds(230, 18, 280, 18);
-        header.add(sub);
+        JLabel subLbl = new JLabel("Rekap Gaji Pegawai");
+        subLbl.setFont(new Font("SansSerif", Font.PLAIN, 11));
+        subLbl.setForeground(new Color(160, 175, 210));
+        subLbl.setBounds(220, 18, 260, 18);
+        header.add(subLbl);
+
+        JButton btnLogout = buatTombol("Logout", DANGER, Color.WHITE);
+        btnLogout.setBounds(860, 12, 100, 32);
+        btnLogout.addActionListener(e -> { new LoginView().setVisible(true); dispose(); });
+        header.add(btnLogout);
 
         JPanel accent = new JPanel();
         accent.setBackground(LIME);
-        accent.setBounds(0, 52, 900, 4);
+        accent.setBounds(0, 52, W, 4);
         root.add(accent);
+    }
 
-        // ── Panel Filter ─────────────────────────────────────────────────────
+    // ────────────────────────────────────────────────────────────────────────
+    // TAB NAVIGASI
+    // ────────────────────────────────────────────────────────────────────────
+    private void buatTabNav(JPanel root) {
+        JPanel navBar = new JPanel(null);
+        navBar.setBackground(NAVY);
+        navBar.setBounds(0, 56, W, 44);
+        root.add(navBar);
+
+        // Tab Data Pegawai (tidak aktif)
+        JPanel tabDataPegawai = buatTab("Data Pegawai", false);
+        tabDataPegawai.setBounds(0, 0, 180, 44);
+        tabDataPegawai.addMouseListener(new MouseAdapter() {
+            @Override public void mouseClicked(MouseEvent e) {
+                new DashboardView().setVisible(true);
+                dispose();
+            }
+        });
+        navBar.add(tabDataPegawai);
+
+        // Tab Rekap Gaji (aktif)
+        JPanel tabRekap = buatTab("Rekap Gaji", true);
+        tabRekap.setBounds(180, 0, 160, 44);
+        navBar.add(tabRekap);
+    }
+
+    private JPanel buatTab(String teks, boolean aktif) {
+        JPanel tab = new JPanel(null) {
+            @Override protected void paintComponent(Graphics g) {
+                super.paintComponent(g);
+                if (aktif) {
+                    g.setColor(LIME);
+                    g.fillRect(0, getHeight() - 3, getWidth(), 3);
+                }
+            }
+        };
+        tab.setBackground(NAVY);
+        tab.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
+
+        JLabel lbl = new JLabel(teks, SwingConstants.CENTER);
+        lbl.setFont(new Font("SansSerif", aktif ? Font.BOLD : Font.PLAIN, 13));
+        lbl.setForeground(aktif ? Color.WHITE : new Color(143, 163, 200));
+        lbl.setBounds(0, 0, tab.getPreferredSize().width, 44);
+        // setBounds diset dari luar, jadi gunakan fill
+        lbl.setBounds(0, 0, 200, 44);
+        tab.add(lbl);
+
+        return tab;
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // KARTU SUMMARY (4 kartu: Total Pegawai, Total Gaji, Sudah, Belum)
+    // ────────────────────────────────────────────────────────────────────────
+    private void buatKartuSummary(JPanel root) {
+        int kartuW = 220;
+        int kartuH = 90;
+        int startX = 20;
+        int startY = 112;
+        int gap    = 16;
+
+        // Kartu 1: Total Pegawai
+        JPanel k1 = buatKartu(root, startX, startY, kartuW, kartuH);
+        buatIsiKartu(k1, "TOTAL PEGAWAI", "0", BLUE);
+        lblTotalPegawai = cariValueLabel(k1);
+
+        // Kartu 2: Total Gaji Bulan Ini
+        JPanel k2 = buatKartu(root, startX + (kartuW + gap), startY, kartuW, kartuH);
+        buatIsiKartu(k2, "TOTAL GAJI BULAN INI", "Rp 0", LIME);
+        lblTotalGaji = cariValueLabel(k2);
+
+        // Kartu 3: Sudah Dibayar
+        JPanel k3 = buatKartu(root, startX + (kartuW + gap) * 2, startY, kartuW, kartuH);
+        buatIsiKartu(k3, "SUDAH DIBAYAR", "0 orang", new Color(50, 180, 100));
+        lblSudah = cariValueLabel(k3);
+
+        // Kartu 4: Belum Dibayar
+        JPanel k4 = buatKartu(root, startX + (kartuW + gap) * 3, startY, kartuW, kartuH);
+        buatIsiKartu(k4, "BELUM DIBAYAR", "0 orang", DANGER);
+        lblBelum = cariValueLabel(k4);
+    }
+
+    private JPanel buatKartu(JPanel root, int x, int y, int w, int h) {
+        JPanel kartu = new JPanel(null);
+        kartu.setBackground(Color.WHITE);
+        kartu.setBounds(x, y, w, h);
+        kartu.setBorder(BorderFactory.createLineBorder(FIELD_BOR, 1));
+        root.add(kartu);
+        return kartu;
+    }
+
+    private void buatIsiKartu(JPanel kartu, String judul, String nilai, Color warnaNilai) {
+        JLabel lJudul = new JLabel(judul);
+        lJudul.setFont(new Font("SansSerif", Font.BOLD, 10));
+        lJudul.setForeground(LABEL_CLR);
+        lJudul.setBounds(14, 12, 200, 16);
+        kartu.add(lJudul);
+
+        JLabel lNilai = new JLabel(nilai);
+        lNilai.setFont(new Font("SansSerif", Font.BOLD, 22));
+        lNilai.setForeground(warnaNilai);
+        lNilai.setName("valueLabel"); // penanda untuk dicari
+        lNilai.setBounds(14, 34, 200, 30);
+        kartu.add(lNilai);
+
+        // Garis bawah berwarna
+        JPanel garis = new JPanel();
+        garis.setBackground(warnaNilai);
+        garis.setBounds(14, 72, 40, 3);
+        kartu.add(garis);
+    }
+
+    // Helper cari JLabel value dari kartu
+    private JLabel cariValueLabel(JPanel kartu) {
+        for (Component c : kartu.getComponents()) {
+            if (c instanceof JLabel && "valueLabel".equals(c.getName())) {
+                return (JLabel) c;
+            }
+        }
+        return new JLabel(); // fallback
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // FILTER BAR
+    // ────────────────────────────────────────────────────────────────────────
+    private void buatFilterBar(JPanel root) {
         JPanel filterPanel = new JPanel(null);
         filterPanel.setBackground(Color.WHITE);
-        filterPanel.setBounds(20, 72, 860, 60);
+        filterPanel.setBounds(20, 214, W - 40, 52);
         filterPanel.setBorder(BorderFactory.createLineBorder(FIELD_BOR, 1));
         root.add(filterPanel);
 
         JLabel lBulan = new JLabel("Bulan");
-        lBulan.setFont(new Font("SansSerif", Font.BOLD, 11));
-        lBulan.setForeground(LABEL_CLR);
-        lBulan.setBounds(16, 10, 50, 18);
+        styleLabel(lBulan);
+        lBulan.setBounds(14, 8, 50, 14);
         filterPanel.add(lBulan);
 
-        cbBulan.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        cbBulan.setBackground(Color.WHITE);
-        cbBulan.setForeground(DARK);
-        cbBulan.setBounds(16, 28, 80, 24);
+        styleCombo(cbBulan);
+        cbBulan.setBounds(14, 24, 150, 22);
         filterPanel.add(cbBulan);
 
         JLabel lTahun = new JLabel("Tahun");
-        lTahun.setFont(new Font("SansSerif", Font.BOLD, 11));
-        lTahun.setForeground(LABEL_CLR);
-        lTahun.setBounds(112, 10, 50, 18);
+        styleLabel(lTahun);
+        lTahun.setBounds(178, 8, 50, 14);
         filterPanel.add(lTahun);
 
-        tfTahun.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        tfTahun.setForeground(DARK);
-        tfTahun.setBackground(Color.WHITE);
-        tfTahun.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(FIELD_BOR, 1),
-            BorderFactory.createEmptyBorder(2, 8, 2, 8)
-        ));
-        tfTahun.setBounds(112, 28, 80, 24);
-        filterPanel.add(tfTahun);
+        styleCombo(cbTahun);
+        cbTahun.setBounds(178, 24, 90, 22);
+        filterPanel.add(cbTahun);
 
-        // Focus effect tfTahun
-        tfTahun.addFocusListener(new FocusAdapter() {
-            @Override public void focusGained(FocusEvent e) {
-                tfTahun.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(BLUE, 2),
-                    BorderFactory.createEmptyBorder(1, 7, 1, 7)
-                ));
-            }
-            @Override public void focusLost(FocusEvent e) {
-                tfTahun.setBorder(BorderFactory.createCompoundBorder(
-                    BorderFactory.createLineBorder(FIELD_BOR, 1),
-                    BorderFactory.createEmptyBorder(2, 8, 2, 8)
-                ));
-            }
-        });
-
-        btnCari.setBounds(210, 16, 150, 30);
-        filterPanel.add(btnCari);
-
-        btnRefresh.setBounds(374, 16, 130, 30);
-        filterPanel.add(btnRefresh);
-
-        // ── Tabel Rekap (atas) ───────────────────────────────────────────────
-        JLabel lRekap = new JLabel("Rekap Bulanan");
-        lRekap.setFont(new Font("SansSerif", Font.BOLD, 12));
-        lRekap.setForeground(DARK);
-        lRekap.setBounds(20, 144, 200, 18);
-        root.add(lRekap);
-
-        styleTable(tableRekap);
-        scrollRekap.setBounds(20, 164, 860, 160);
-        scrollRekap.setBorder(BorderFactory.createLineBorder(FIELD_BOR));
-        root.add(scrollRekap);
-
-        // ── Tabel Detail (bawah) ─────────────────────────────────────────────
-        JLabel lDetail = new JLabel("Detail Pegawai");
-        lDetail.setFont(new Font("SansSerif", Font.BOLD, 12));
-        lDetail.setForeground(DARK);
-        lDetail.setBounds(20, 338, 200, 18);
-        root.add(lDetail);
-
-        styleTable(tableDetail);
-        scrollDetail.setBounds(20, 358, 860, 250);
-        scrollDetail.setBorder(BorderFactory.createLineBorder(FIELD_BOR));
-        root.add(scrollDetail);
-
-        // ── Load data awal ───────────────────────────────────────────────────
-        controller.tampilRekap(tableRekap);
-
-        // ── Listener ─────────────────────────────────────────────────────────
-        btnCari.addActionListener(e -> {
-            try {
-                int bulan = Integer.parseInt(cbBulan.getSelectedItem().toString());
-                int tahun = Integer.parseInt(tfTahun.getText());
-                controller.tampilDetailBulan(tableDetail, bulan, tahun);
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(null, "Tahun tidak valid");
-            }
-        });
-
-        btnRefresh.addActionListener(e -> {
-            controller.tampilRekap(tableRekap);
-        });
-
-        // Klik baris rekap → otomatis isi detail
-        tableRekap.addMouseListener(new java.awt.event.MouseAdapter() {
-            @Override public void mouseClicked(java.awt.event.MouseEvent evt) {
-                int row = tableRekap.getSelectedRow();
-                if (row >= 0) {
-                    int bulan = Integer.parseInt(tableRekap.getValueAt(row, 0).toString());
-                    int tahun = Integer.parseInt(tableRekap.getValueAt(row, 1).toString());
-                    cbBulan.setSelectedItem(String.valueOf(bulan));
-                    tfTahun.setText(String.valueOf(tahun));
-                    controller.tampilDetailBulan(tableDetail, bulan, tahun);
-                }
-            }
-        });
+        btnFilter.setBounds(284, 12, 120, 28);
+        filterPanel.add(btnFilter);
     }
 
-    // ── Style tabel ──────────────────────────────────────────────────────────
-    private void styleTable(JTable table) {
-        table.setFont(new Font("SansSerif", Font.PLAIN, 13));
-        table.setRowHeight(30);
-        table.setShowGrid(false);
-        table.setIntercellSpacing(new Dimension(0, 0));
-        table.setSelectionBackground(new Color(66, 133, 244, 40));
-        table.setSelectionForeground(DARK);
-        table.setBackground(Color.WHITE);
-        table.setForeground(DARK);
+    // ────────────────────────────────────────────────────────────────────────
+    // TABEL DETAIL
+    // ────────────────────────────────────────────────────────────────────────
+    private void buatTabelDetail(JPanel root) {
+        JLabel tblTitle = new JLabel("Detail Penggajian Pegawai");
+        tblTitle.setFont(new Font("SansSerif", Font.BOLD, 13));
+        tblTitle.setForeground(DARK);
+        tblTitle.setBounds(20, 278, 400, 20);
+        root.add(tblTitle);
 
-        JTableHeader th = table.getTableHeader();
-        th.setFont(new Font("SansSerif", Font.BOLD, 12));
+        scrollDetail.setBounds(20, 300, W - 40, 320);
+        scrollDetail.setBorder(BorderFactory.createLineBorder(FIELD_BOR));
+        root.add(scrollDetail);
+    }
+
+    private void buatTombolBar(JPanel root) {
+        btnKembali.setBounds(20, 634, 160, 32);
+        root.add(btnKembali);
+
+        btnRefresh.setBounds(190, 634, 120, 32);
+        root.add(btnRefresh);
+    }
+
+    // ────────────────────────────────────────────────────────────────────────
+    // STYLE TABLE — warna Status Lunas/Belum
+    // ────────────────────────────────────────────────────────────────────────
+    private void styleTable(JTable t) {
+        t.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        t.setRowHeight(32);
+        t.setShowGrid(false);
+        t.setIntercellSpacing(new Dimension(0, 0));
+        t.setSelectionBackground(new Color(66, 133, 244, 50));
+        t.setSelectionForeground(DARK);
+        t.setBackground(Color.WHITE);
+        t.setForeground(DARK);
+
+        // Sembunyikan kolom ID (kolom 0)
+        if (t.getColumnCount() > 0) {
+            t.getColumnModel().getColumn(0).setMinWidth(0);
+            t.getColumnModel().getColumn(0).setMaxWidth(0);
+            t.getColumnModel().getColumn(0).setWidth(0);
+        }
+
+        JTableHeader th = t.getTableHeader();
+        th.setFont(new Font("SansSerif", Font.BOLD, 11));
         th.setBackground(NAVY);
         th.setForeground(Color.WHITE);
         th.setPreferredSize(new Dimension(0, 34));
         th.setBorder(BorderFactory.createEmptyBorder());
 
-        table.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-            @Override public Component getTableCellRendererComponent(JTable t, Object val,
-                    boolean sel, boolean foc, int row, int col) {
-                super.getTableCellRendererComponent(t, val, sel, foc, row, col);
-                setBackground(sel ? new Color(66, 133, 244, 50)
-                             : row % 2 == 0 ? Color.WHITE : new Color(245, 247, 252));
+        // Kolom Status (index 9) diberi warna hijau/merah
+        int colStatus = t.getColumnCount() - 1;
+
+        t.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+            @Override public Component getTableCellRendererComponent(
+                    JTable tbl, Object val, boolean sel, boolean foc, int row, int col) {
+                super.getTableCellRendererComponent(tbl, val, sel, foc, row, col);
+                setForeground(DARK);
+                if (sel) {
+                    setBackground(new Color(66, 133, 244, 50));
+                } else {
+                    setBackground(row % 2 == 0 ? Color.WHITE : new Color(245, 247, 252));
+                }
                 setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+
+                // Warna khusus kolom Status
+                if (col == colStatus && val != null) {
+                    if ("Lunas".equals(val.toString())) {
+                        setForeground(new Color(30, 160, 80));
+                        setFont(getFont().deriveFont(Font.BOLD));
+                    } else {
+                        setForeground(DANGER);
+                        setFont(getFont().deriveFont(Font.BOLD));
+                    }
+                } else {
+                    setFont(new Font("SansSerif", Font.PLAIN, 12));
+                }
                 return this;
             }
         });
     }
 
-    // ── Helper tombol ─────────────────────────────────────────────────────────
-    static JButton buatTombol(String teks, Color bg, Color fg) {
-        JButton btn = new JButton(teks) {
-            @Override protected void paintComponent(Graphics g) {
-                Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-                g2.setColor(getModel().isPressed() ? bg.darker()
-                           : getModel().isRollover() ? bg.brighter() : bg);
-                g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);
-                g2.dispose();
-                super.paintComponent(g);
-            }
-        };
-        btn.setFont(new Font("SansSerif", Font.BOLD, 12));
-        btn.setForeground(fg);
-        btn.setFocusPainted(false);
-        btn.setContentAreaFilled(false);
-        btn.setBorderPainted(false);
-        btn.setOpaque(false);
-        btn.setCursor(Cursor.getPredefinedCursor(Cursor.HAND_CURSOR));
-        return btn;
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    private void styleLabel(JLabel l) {
+        l.setFont(new Font("SansSerif", Font.BOLD, 11));
+        l.setForeground(LABEL_CLR);
+    }
+
+    private void styleCombo(JComboBox<?> cb) {
+        cb.setFont(new Font("SansSerif", Font.PLAIN, 12));
+        cb.setBackground(FIELD_BG);
+        cb.setForeground(DARK);
+    }
+
+    private void bulanTahunSekarang() {
+        Calendar cal = Calendar.getInstance();
+        cbBulan.setSelectedIndex(cal.get(Calendar.MONTH));
+        cbTahun.setSelectedItem(String.valueOf(cal.get(Calendar.YEAR)));
     }
 }
+

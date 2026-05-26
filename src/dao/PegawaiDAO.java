@@ -26,8 +26,7 @@ public class PegawaiDAO {
                     + "jabatan,jenis_pegawai)"
                     + "VALUES(?,?,?,?,?)";
 
-            PreparedStatement ps =
-                    conn.prepareStatement(query);
+            PreparedStatement ps = conn.prepareStatement(query);
 
             ps.setString(1, p.getNik());
             ps.setString(2, p.getNama());
@@ -36,18 +35,14 @@ public class PegawaiDAO {
             ps.setString(4, p.getJabatan());
             ps.setString(5, p.getJenisPegawai());
             ps.executeUpdate();
-
         } catch (Exception e) {
-
             System.out.println(e.getMessage());
-
         }
     }
 
     // TAMPIL DATA
     public void tampilData(JTable table) {
-        DefaultTableModel model =
-                new DefaultTableModel();
+        DefaultTableModel model = new DefaultTableModel();
         model.addColumn("ID");
         model.addColumn("NIK");
         model.addColumn("Nama");
@@ -55,48 +50,27 @@ public class PegawaiDAO {
         model.addColumn("Jenis");
 
         try {
-
-            String query =
-                    "SELECT * FROM pegawai";
-
-            PreparedStatement ps =
-                    conn.prepareStatement(query);
-
-            ResultSet rs =
-                    ps.executeQuery();
-
+            String query = "SELECT * FROM pegawai";
+            PreparedStatement ps = conn.prepareStatement(query);
+            ResultSet rs = ps.executeQuery();
             while (rs.next()) {
-
                 model.addRow(new Object[]{
-
                     rs.getInt("id_pegawai"),
-
                     rs.getString("nik"),
-
                     rs.getString("nama"),
-
                     rs.getString("jabatan"),
-
                     rs.getString("jenis_pegawai")
-
                 });
-
             }
-
             table.setModel(model);
-
         } catch (Exception e) {
-
             System.out.println(e.getMessage());
-
         }
     }
 
     // UPDATE
     public void updatePegawai(Pegawai p) {
-
         try {
-
             String query =
                     "UPDATE pegawai SET "
                     + "nik=?,"
@@ -104,62 +78,37 @@ public class PegawaiDAO {
                     + "jabatan=?,"
                     + "jenis_pegawai=? "
                     + "WHERE id_pegawai=?";
-
-            PreparedStatement ps =
-                    conn.prepareStatement(query);
-
+            PreparedStatement ps = conn.prepareStatement(query);
             ps.setString(1, p.getNik());
-
             ps.setString(2, p.getNama());
-
             ps.setString(3, p.getJabatan());
-
             ps.setString(4, p.getJenisPegawai());
-
             ps.setInt(5, p.getIdPegawai());
-
             ps.executeUpdate();
-
         } catch (Exception e) {
-
             System.out.println(e.getMessage());
-
         }
     }
 
     // DELETE
     public void deletePegawai(int id) {
-
     try {
-
-        // HAPUS PENGGAJIAN DULU
-        String q1 =
-                "DELETE FROM penggajian "
+        String q1 = "DELETE FROM penggajian "
                 + "WHERE id_pegawai=?";
-
-        PreparedStatement ps1 =
-                conn.prepareStatement(q1);
+        PreparedStatement ps1 = conn.prepareStatement(q1);
 
         ps1.setInt(1, id);
-
         ps1.executeUpdate();
 
         // HAPUS PEGAWAI
-        String q2 =
-                "DELETE FROM pegawai "
+        String q2 = "DELETE FROM pegawai "
                 + "WHERE id_pegawai=?";
 
-        PreparedStatement ps2 =
-                conn.prepareStatement(q2);
-
+        PreparedStatement ps2 = conn.prepareStatement(q2);
         ps2.setInt(1, id);
-
         ps2.executeUpdate();
-
     } catch (Exception e) {
-
         System.out.println(e.getMessage());
-
     }
 }
 }

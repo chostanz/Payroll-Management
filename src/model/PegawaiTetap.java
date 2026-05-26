@@ -10,8 +10,7 @@ public class PegawaiTetap extends Pegawai {
     @Override
     public double hitungGaji() {
 
-        return (gajiPokok + tunjangan + bonus)
-                - hitungPotongan(terlambat);
+        return (gajiPokok + tunjangan + bonus) - hitungPotongan(terlambat);
     }
 
     public double getGajiPokok() {

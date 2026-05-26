@@ -10,8 +10,7 @@ public class PegawaiPartTime extends Pegawai {
     @Override
     public double hitungGaji() {
 
-        return (upahPerJam * jamKerja + bonus)
-                - hitungPotongan(terlambat);
+        return (upahPerJam * jamKerja + bonus) - hitungPotongan(terlambat);
     }
 
     public double getUpahPerJam() {
