@@ -9,7 +9,6 @@ import java.awt.event.FocusEvent;
 import model.Penggajian;
 
 public class PenggajianView extends JFrame {
-
     static final Color BG        = new Color(240, 242, 248);
     static final Color NAVY      = new Color(25, 35, 60);
     static final Color BLUE      = new Color(66, 133, 244);
@@ -31,8 +30,8 @@ public class PenggajianView extends JFrame {
     JTextField tfJamKerja  = new JTextField();
     JTextField tfAbsen     = new JTextField();
     JTextField tfBonus     = new JTextField();
-    JTextField tfGajiPokok = new JTextField(); // input gaji pokok / upah
-    JTextField tfTunjangan = new JTextField(); // input tunjangan (hanya Tetap)
+    JTextField tfGajiPokok = new JTextField();
+    JTextField tfTunjangan = new JTextField();
 
     JButton btnHitung = buatTombol("Hitung Gaji", BLUE, Color.WHITE);
     JButton btnCetak  = buatTombol("Cetak Slip",  NAVY, Color.WHITE);
@@ -45,34 +44,55 @@ public class PenggajianView extends JFrame {
     String namaPegawai;
     String jenisPegawai;
 
+    // Mode edit
+    boolean modeEdit     = false;
+    int     idPenggajian = -1; // -1 = insert, >0 = edit
+
+    // Constructor INSERT (dari DashboardView)
     public PenggajianView(int id, String nama, String jenis) {
         controller   = new PenggajianController();
         idPegawai    = id;
         namaPegawai  = nama;
         jenisPegawai = jenis;
 
-        setTitle("Penggajian");
+        double[] gajiDasar = controller.getGajiDasar(idPegawai, jenisPegawai);
+        bangunUI(gajiDasar[0], gajiDasar[1], 0, 0); // bonus=0, absen=0
+    }
+
+    // Constructor EDIT (dari RekapPenggajianView)
+    public PenggajianView(int idPenggajian, int idPegawai, String nama,
+                          String jenis, double bonusLama, int absenLama) {
+        controller        = new PenggajianController();
+        this.idPenggajian = idPenggajian;
+        this.idPegawai    = idPegawai;
+        this.namaPegawai  = nama;
+        this.jenisPegawai = jenis;
+        this.modeEdit     = true;
+
+        double[] gajiDasar = controller.getGajiDasar(idPegawai, jenisPegawai);
+        bangunUI(gajiDasar[0], gajiDasar[1], bonusLama, absenLama);
+    }
+
+    // UI
+    private void bangunUI(double gajiPokokDB, double tunjanganDB,
+                          double bonusAwal, int absenAwal) {
+
+        setTitle(modeEdit ? "Edit Penggajian" : "Penggajian");
         setSize(680, 700);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        // Ambil gaji dasar dari DB sebagai nilai default field
-        double[] gajiDasar = controller.getGajiDasar(idPegawai, jenisPegawai);
-        double gajiPokokDB = gajiDasar[0];
-        double tunjanganDB = gajiDasar[1];
-
-        // ── Root ─────────────────────────────────────────────────────────────
         JPanel root = new JPanel(null);
         root.setBackground(BG);
         setContentPane(root);
 
-        // Header 
+        // Header
         JPanel header = new JPanel(null);
         header.setBackground(NAVY);
         header.setBounds(0, 0, 680, 56);
         root.add(header);
 
-        JLabel title = new JLabel("Penggajian");
+        JLabel title = new JLabel(modeEdit ? "Edit Penggajian" : "Penggajian");
         title.setFont(new Font("SansSerif", Font.BOLD, 16));
         title.setForeground(Color.WHITE);
         title.setBounds(20, 14, 200, 28);
@@ -89,7 +109,7 @@ public class PenggajianView extends JFrame {
         accent.setBounds(0, 52, 680, 4);
         root.add(accent);
 
-        // ── Panel Info Pegawai ────────────────────────────────────────────────
+        // Info Pegawai 
         JPanel infoPanel = new JPanel(null);
         infoPanel.setBackground(Color.WHITE);
         infoPanel.setBounds(20, 72, 640, 60);
@@ -122,11 +142,7 @@ public class PenggajianView extends JFrame {
         vJenis.setBounds(490, 34, 140, 20);
         infoPanel.add(vJenis);
 
-        // Panel Input
-        // Tinggi panel input:
-        // Tetap    : gaji pokok + tunjangan + absen + bonus = 4 baris → 230
-        // Kontrak  : upah/bulan + absen + bonus = 3 baris → 180
-        // PartTime : upah/jam + jam kerja + absen + bonus = 4 baris → 230
+        // Input
         int inputPanelH = "Tetap".equals(jenisPegawai) ? 240
                         : "PartTime".equals(jenisPegawai) ? 240 : 190;
 
@@ -142,17 +158,14 @@ public class PenggajianView extends JFrame {
         inputTitle.setBounds(16, 10, 200, 18);
         inputPanel.add(inputTitle);
 
-        // Tombol di kanan (posisi tetap)
         btnHitung.setBounds(410, 38, 210, 38);
         btnCetak .setBounds(410, 90, 210, 38);
         inputPanel.add(btnHitung);
         inputPanel.add(btnCetak);
 
-        // Baris input dinamis sesuai jenis
-        int y = 38; // mulai dari y=38
+        int y = 38;
 
         if ("Tetap".equals(jenisPegawai)) {
-            // Baris 1: Gaji Pokok
             JLabel lGP = new JLabel("Gaji Pokok");
             styleLabel(lGP);
             lGP.setBounds(16, y, 140, 20);
@@ -163,7 +176,6 @@ public class PenggajianView extends JFrame {
             inputPanel.add(tfGajiPokok);
             y += 50;
 
-            // Baris 2: Tunjangan
             JLabel lTunj = new JLabel("Tunjangan");
             styleLabel(lTunj);
             lTunj.setBounds(16, y, 140, 20);
@@ -175,7 +187,6 @@ public class PenggajianView extends JFrame {
             y += 50;
 
         } else if ("Kontrak".equals(jenisPegawai)) {
-            // Baris 1: Upah per Bulan
             JLabel lUpah = new JLabel("Upah/Bulan");
             styleLabel(lUpah);
             lUpah.setBounds(16, y, 140, 20);
@@ -187,7 +198,6 @@ public class PenggajianView extends JFrame {
             y += 50;
 
         } else { // PartTime
-            // Baris 1: Upah per Jam
             JLabel lUpahJam = new JLabel("Upah/Jam");
             styleLabel(lUpahJam);
             lUpahJam.setBounds(16, y, 140, 20);
@@ -198,7 +208,6 @@ public class PenggajianView extends JFrame {
             inputPanel.add(tfGajiPokok);
             y += 50;
 
-            // Baris 2: Jam Kerja
             styleLabel(lJamKerja);
             lJamKerja.setBounds(16, y, 140, 20);
             inputPanel.add(lJamKerja);
@@ -208,24 +217,24 @@ public class PenggajianView extends JFrame {
             y += 50;
         }
 
-        // Baris: Jumlah Absen (semua jenis)
         styleLabel(lAbsen);
         lAbsen.setBounds(16, y, 140, 20);
         inputPanel.add(lAbsen);
         styleField(tfAbsen);
+        tfAbsen.setText(absenAwal > 0 ? String.valueOf(absenAwal) : "");
         tfAbsen.setBounds(160, y - 4, 220, 32);
         inputPanel.add(tfAbsen);
         y += 50;
 
-        // Baris: Bonus (semua jenis)
         styleLabel(lBonus);
         lBonus.setBounds(16, y, 140, 20);
         inputPanel.add(lBonus);
         styleField(tfBonus);
+        tfBonus.setText(bonusAwal > 0 ? String.valueOf((long) bonusAwal) : "");
         tfBonus.setBounds(160, y - 4, 220, 32);
         inputPanel.add(tfBonus);
 
-        // Panel Slip 
+        // ── Slip Panel ────────────────────────────────────────────────────────
         int slipY = 144 + inputPanelH + 10;
 
         JLabel slipTitle = new JLabel("Slip Gaji");
@@ -244,7 +253,7 @@ public class PenggajianView extends JFrame {
         scroll.setBorder(BorderFactory.createLineBorder(FIELD_BOR));
         root.add(scroll);
 
-        // Listener Hitung Gaji 
+        // Hitung
         btnHitung.addActionListener(e -> {
             try {
                 double upah  = Double.parseDouble(tfGajiPokok.getText());
@@ -259,7 +268,7 @@ public class PenggajianView extends JFrame {
                     gajiBruto = upah + tunj + bonus;
                 } else if ("Kontrak".equals(jenisPegawai)) {
                     gajiBruto = upah + bonus;
-                } else { // PartTime
+                } else {
                     double jamKerja = Double.parseDouble(tfJamKerja.getText());
                     gajiBruto = (upah * jamKerja) + bonus;
                 }
@@ -269,6 +278,7 @@ public class PenggajianView extends JFrame {
                 double totalPotongan = bpjs + potonganAbsen;
                 double gajiBersih    = gajiBruto - totalPotongan;
 
+                // Tampilkan slip
                 StringBuilder slip = new StringBuilder();
                 slip.append("==============================\n");
                 slip.append("          SLIP GAJI\n");
@@ -290,20 +300,36 @@ public class PenggajianView extends JFrame {
                 slip.append("==============================");
                 areaSlip.setText(slip.toString());
 
+                // Simpan gaji dasar ke tabel detail
                 controller.simpanGajiDasar(idPegawai, jenisPegawai, upah, tunj);
-                 
-                Penggajian p = new Penggajian();
-                p.setIdPegawai(idPegawai);
-                p.setBonus(bonus);
-                p.setJumlahTerlambat(absen);
-                p.setTotalPotongan(totalPotongan);
-                p.setGajiKotor(gajiBruto);
-                p.setGajiBersih(gajiBersih);
-                p.setBulan(java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1);
-                p.setTahun(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR));
-                controller.insertPenggajian(p);
 
-                JOptionPane.showMessageDialog(null, "Penggajian berhasil disimpan!");
+                // Insert/update
+                if (modeEdit) {
+                    controller.updatePenggajian(
+                            idPenggajian,
+                            gajiBruto,
+                            totalPotongan,
+                            gajiBersih,
+                            bonus,
+                            absen
+                    );
+                    JOptionPane.showMessageDialog(null, "Penggajian berhasil diupdate!");
+                } else {
+                    Penggajian p = new Penggajian();
+                    p.setIdPegawai(idPegawai);
+                    p.setBonus(bonus);
+                    p.setJumlahTerlambat(absen);
+                    p.setTotalPotongan(totalPotongan);
+                    p.setGajiKotor(gajiBruto);
+                    p.setGajiBersih(gajiBersih);
+                    p.setBulan(java.util.Calendar.getInstance().get(java.util.Calendar.MONTH) + 1);
+                    p.setTahun(java.util.Calendar.getInstance().get(java.util.Calendar.YEAR));
+                    controller.insertPenggajian(p);
+                    JOptionPane.showMessageDialog(null, "Penggajian berhasil disimpan!");
+                }
+
+                dispose();
+
             } catch (NumberFormatException ex) {
                 JOptionPane.showMessageDialog(null, "Input tidak valid: " + ex.getMessage());
             } catch (Exception ex) {
@@ -316,7 +342,7 @@ public class PenggajianView extends JFrame {
             catch (Exception ex) { JOptionPane.showMessageDialog(null, ex.getMessage()); }
         });
     }
-
+    
     private void styleLabel(JLabel l) {
         l.setFont(new Font("SansSerif", Font.BOLD, 11));
         l.setForeground(LABEL_CLR);
@@ -350,7 +376,8 @@ public class PenggajianView extends JFrame {
         JButton btn = new JButton(teks) {
             @Override protected void paintComponent(Graphics g) {
                 Graphics2D g2 = (Graphics2D) g.create();
-                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+                g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING,
+                                    RenderingHints.VALUE_ANTIALIAS_ON);
                 g2.setColor(getModel().isPressed()  ? bg.darker()
                            : getModel().isRollover() ? bg.brighter() : bg);
                 g2.fillRoundRect(0, 0, getWidth(), getHeight(), 8, 8);

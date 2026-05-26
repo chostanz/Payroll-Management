@@ -10,12 +10,28 @@ public class PenggajianController {
     public PenggajianController() {
         dao = new PenggajianDAO();
     }
-public void simpanGajiDasar(int idPegawai, String jenisPegawai, double gajiPokok, double tunjangan) {
-    dao.simpanGajiDasar(idPegawai, jenisPegawai, gajiPokok, tunjangan);
-}
-
+    public void simpanGajiDasar(int idPegawai, String jenisPegawai, double gajiPokok, double tunjangan) {
+        dao.simpanGajiDasar(idPegawai, jenisPegawai, gajiPokok, tunjangan);
+    }
     public void insertPenggajian(Penggajian p) {
         dao.insertPenggajian(p);
+    }
+    public void updatePenggajian(
+            int idPenggajian,
+            double gajiKotor,
+            double totalPotongan,
+            double gajiBersih,
+            double bonus,
+            int jumlahTerlambat
+    ) {
+        dao.updatePenggajian(
+                idPenggajian,
+                gajiKotor,
+                totalPotongan,
+                gajiBersih,
+                bonus,
+                jumlahTerlambat
+        );
     }
 
     public void tampilData(JTable table) {

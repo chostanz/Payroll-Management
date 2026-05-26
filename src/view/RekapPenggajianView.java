@@ -13,7 +13,7 @@ public class RekapPenggajianView extends JFrame {
 
     private final RekapPenggajianController controller = new RekapPenggajianController();
 
-    // ── Filter ───────────────────────────────────────────────────────────────
+    // Filter 
     private final JComboBox<String> cbBulan = new JComboBox<>(new String[]{
         "Januari","Februari","Maret","April","Mei","Juni",
         "Juli","Agustus","September","Oktober","November","Desember"
@@ -22,14 +22,14 @@ public class RekapPenggajianView extends JFrame {
         "2023","2024","2025","2026"
     });
 
-    // ── Tabel detail ─────────────────────────────────────────────────────────
+    // Tabel detail 
     private final JTable      tableDetail = new JTable();
     private final JScrollPane scrollDetail = new JScrollPane(tableDetail);
 
-    // ── Kartu summary ────────────────────────────────────────────────────────
+    // Kartu 
     private JLabel lblTotalPegawai, lblTotalGaji, lblSudah, lblBelum;
 
-    // ── Tombol ───────────────────────────────────────────────────────────────
+    // Tombol 
     private final JButton btnFilter  = buatTombol("Filter",         BLUE,      Color.WHITE);
     private final JButton btnKembali = buatTombol("← Data Pegawai", FIELD_BOR, DARK);
     private final JButton btnRefresh = buatTombol("↻ Refresh",      FIELD_BOR, DARK);
@@ -65,138 +65,98 @@ public class RekapPenggajianView extends JFrame {
             new DashboardView().setVisible(true);
             dispose();
         });
-        tableDetail.addMouseListener(new java.awt.event.MouseAdapter() {
-    @Override
-    public void mouseClicked(java.awt.event.MouseEvent e) {
+        tableDetail.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent e) {
+            int row = tableDetail.rowAtPoint(e.getPoint());
+            int col = tableDetail.columnAtPoint(e.getPoint());
 
-        int row = tableDetail.rowAtPoint(e.getPoint());
-        int col = tableDetail.columnAtPoint(e.getPoint());
+            if (col != 13) return; // hanya kolom Aksi
 
-        // kolom aksi
-        if (col == 10) {
-
-            // Ambil id_penggajian dari kolom 0 (tersembunyi)
             int idPenggajian = Integer.parseInt(tableDetail.getValueAt(row, 0).toString());
-
-            // Cegah aksi kalau pegawai belum punya data penggajian bulan ini
             if (idPenggajian == 0) {
                 JOptionPane.showMessageDialog(null,
                     "Pegawai ini belum diproses penggajiannya bulan ini.");
                 return;
             }
-        
-            JPopupMenu menu = new JPopupMenu();
 
-            JMenuItem editItem = new JMenuItem("✏ Edit Penggajian");
+            String statusSaatIni = tableDetail.getValueAt(row, 12).toString();
+
+            JPopupMenu menu = new JPopupMenu();
+            JMenuItem editItem  = new JMenuItem("✏ Edit Penggajian");
             JMenuItem lunasItem = new JMenuItem("✔ Tandai Lunas");
             JMenuItem batalItem = new JMenuItem("↩ Batalkan Pembayaran");
+
+            // Kalau sudah Lunas, edit tidak bisa
+            editItem.setEnabled(!"Lunas".equals(statusSaatIni));
 
             menu.add(editItem);
             menu.add(lunasItem);
             menu.add(batalItem);
             menu.show(tableDetail, e.getX(), e.getY());
+
             // EDIT
-            editItem.addActionListener(ev -> { bukaFormEdit(row, idPenggajian);
+            editItem.addActionListener(ev -> {
+                int    idPegawai    = Integer.parseInt(tableDetail.getValueAt(row, 1).toString());
+                String nama         = tableDetail.getValueAt(row, 3).toString();
+                String jenis        = tableDetail.getValueAt(row, 5).toString();
+                double bonus        = Double.parseDouble(tableDetail.getValueAt(row, 8).toString());
+                int    terlambat    = Integer.parseInt(tableDetail.getValueAt(row, 9).toString());
+
+                new PenggajianView(
+                    idPenggajian,
+                    idPegawai,
+                    nama,
+                    jenis,
+                    bonus,
+                    terlambat
+                ).setVisible(true);
             });
 
             // TANDAI LUNAS
             lunasItem.addActionListener(ev -> {
                 if (JOptionPane.showConfirmDialog(null,
-                    "Tandai penggajian sebagai lunas?", "Konfirmasi",
-                    JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-                controller.updateStatusBayar(idPenggajian, "Lunas"); // → DB
-                tableDetail.setValueAt("Lunas", row, 9);             // → tampilan
-                JOptionPane.showMessageDialog(null, "Status diubah menjadi Lunas");
-            }
+                        "Tandai penggajian sebagai lunas?", "Konfirmasi",
+                        JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                    controller.updateStatusBayar(idPenggajian, "Lunas");
+                    muatData();
+                    tableDetail.setValueAt("Lunas", row, 12);
+                    JOptionPane.showMessageDialog(null, "Status diubah menjadi Lunas");
+                }
             });
 
-            // BATALKAN PEMBAYARAN
+            // BATALKAN
             batalItem.addActionListener(ev -> {
-            if (JOptionPane.showConfirmDialog(null,
-                              "Batalkan pembayaran?", "Konfirmasi",
-                              JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
-                          controller.updateStatusBayar(idPenggajian, "Belum"); // → DB
-                          tableDetail.setValueAt("Belum", row, 9);             // → tampilan
-                          JOptionPane.showMessageDialog(null, "Pembayaran dibatalkan");
-                      }
-                      });
-                  }
-    }
-});
-    }
-    
-
-    // ── Muat data (summary + tabel) ──────────────────────────────────────────
-    private void muatData() {
-        int bulan = cbBulan.getSelectedIndex() + 1;
-        int tahun = Integer.parseInt(cbTahun.getSelectedItem().toString());
-
-        // Update kartu
-        int[] s = controller.getSummary(bulan, tahun);
-        lblTotalPegawai.setText(String.valueOf(s[0]));
-        lblTotalGaji.setText("Rp " + String.format("%,.0f", (double) s[3]));
-        lblSudah.setText(s[1] + " orang");
-        lblBelum.setText(s[2] + " orang");
-
-        // Update tabel detail
-        controller.tampilDetailBulan(tableDetail, bulan, tahun);
-        styleTable(tableDetail);
-    }
-private void bukaFormEdit(int row, int idPenggajian) {
-    // Ambil nilai dari tabel, bersihkan format "Rp 1.000" → "1000"
-    String rawPotongan   = tableDetail.getValueAt(row, 7).toString()
-                            .replace("Rp ", "").replace(".", "").replace(",", "").trim();
-    String rawGajiBersih = tableDetail.getValueAt(row, 8).toString()
-                            .replace("Rp ", "").replace(".", "").replace(",", "").trim();
-    if ("-".equals(rawPotongan))   rawPotongan   = "0";
-    if ("-".equals(rawGajiBersih)) rawGajiBersih = "0";
-
-    JDialog dialog = new JDialog(this, "Edit Penggajian", true);
-    dialog.setSize(350, 210);
-    dialog.setLocationRelativeTo(this);
-    dialog.setLayout(null);
-
-    JLabel lPotongan   = new JLabel("Total Potongan");
-    JLabel lGajiBersih = new JLabel("Gaji Bersih");
-    JTextField tfPotongan   = new JTextField(rawPotongan);
-    JTextField tfGajiBersih = new JTextField(rawGajiBersih);
-    JButton btnSimpan = new JButton("Simpan");
-
-    lPotongan   .setBounds(20, 15,  120, 25);
-    tfPotongan  .setBounds(20, 40,  280, 30);
-    lGajiBersih .setBounds(20, 82,  120, 25);
-    tfGajiBersih.setBounds(20, 107, 280, 30);
-    btnSimpan   .setBounds(20, 155, 280, 35);
-
-    dialog.add(lPotongan);   dialog.add(tfPotongan);
-    dialog.add(lGajiBersih); dialog.add(tfGajiBersih);
-    dialog.add(btnSimpan);
-
-    btnSimpan.addActionListener(e -> {
-        try {
-            double potongan   = Double.parseDouble(tfPotongan.getText());
-            double gajiBersih = Double.parseDouble(tfGajiBersih.getText());
-            double gajiKotor  = gajiBersih + potongan;
-
-            // Update ke DB
-            controller.updatePenggajian(idPenggajian, gajiKotor, potongan, gajiBersih);
-
-            // Update tampilan tabel
-            tableDetail.setValueAt("Rp " + String.format("%,.0f", potongan),   row, 7);
-            tableDetail.setValueAt("Rp " + String.format("%,.0f", gajiBersih), row, 8);
-
-            JOptionPane.showMessageDialog(null, "Data berhasil diupdate!");
-            dialog.dispose();
-        } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(null, "Input harus berupa angka!");
+                if (JOptionPane.showConfirmDialog(null,
+                        "Batalkan pembayaran?", "Konfirmasi",
+                        JOptionPane.YES_NO_OPTION) == JOptionPane.YES_OPTION) {
+                    controller.updateStatusBayar(idPenggajian, "Belum");
+                    muatData();
+                    tableDetail.setValueAt("Belum", row, 12);
+                    JOptionPane.showMessageDialog(null, "Pembayaran dibatalkan");
+                }
+            });
         }
-    });
+    });}
 
-    dialog.setVisible(true);
+
+        // ── Muat data (summary + tabel) ──────────────────────────────────────────
+        private void muatData() {
+            int bulan = cbBulan.getSelectedIndex() + 1;
+            int tahun = Integer.parseInt(cbTahun.getSelectedItem().toString());
+
+            // Update kartu
+            int[] s = controller.getSummary(bulan, tahun);
+            lblTotalPegawai.setText(String.valueOf(s[0]));
+            lblTotalGaji.setText("Rp " + String.format("%,.0f", (double) s[3]));
+            lblSudah.setText(s[1] + " orang");
+            lblBelum.setText(s[2] + " orang");
+
+            // Update tabel detail
+            controller.tampilDetailBulan(tableDetail, bulan, tahun);
+            styleTable(tableDetail);
     }
-    // ────────────────────────────────────────────────────────────────────────
     // HEADER
-    // ────────────────────────────────────────────────────────────────────────
     private void buatHeader(JPanel root) {
         JPanel header = new JPanel(null);
         header.setBackground(NAVY);
@@ -226,9 +186,7 @@ private void bukaFormEdit(int row, int idPenggajian) {
         root.add(accent);
     }
 
-    // ────────────────────────────────────────────────────────────────────────
-    // TAB NAVIGASI
-    // ────────────────────────────────────────────────────────────────────────
+    // NAVIGASI
     private void buatTabNav(JPanel root) {
         JPanel navBar = new JPanel(null);
         navBar.setBackground(NAVY);
@@ -275,10 +233,7 @@ private void bukaFormEdit(int row, int idPenggajian) {
 
         return tab;
     }
-
-    // ────────────────────────────────────────────────────────────────────────
-    // KARTU SUMMARY (4 kartu: Total Pegawai, Total Gaji, Sudah, Belum)
-    // ────────────────────────────────────────────────────────────────────────
+    //kartu atas
     private void buatKartuSummary(JPanel root) {
         int kartuW = 220;
         int kartuH = 90;
@@ -286,22 +241,22 @@ private void bukaFormEdit(int row, int idPenggajian) {
         int startY = 112;
         int gap    = 16;
 
-        // Kartu 1: Total Pegawai
+        // Total Pegawai
         JPanel k1 = buatKartu(root, startX, startY, kartuW, kartuH);
         buatIsiKartu(k1, "TOTAL PEGAWAI", "0", BLUE);
         lblTotalPegawai = cariValueLabel(k1);
 
-        // Kartu 2: Total Gaji Bulan Ini
+        // Total Gaji Bulan Ini
         JPanel k2 = buatKartu(root, startX + (kartuW + gap), startY, kartuW, kartuH);
         buatIsiKartu(k2, "TOTAL GAJI BULAN INI", "Rp 0", LIME);
         lblTotalGaji = cariValueLabel(k2);
 
-        // Kartu 3: Sudah Dibayar
+        // Sudah Dibayar
         JPanel k3 = buatKartu(root, startX + (kartuW + gap) * 2, startY, kartuW, kartuH);
         buatIsiKartu(k3, "SUDAH DIBAYAR", "0 orang", new Color(50, 180, 100));
         lblSudah = cariValueLabel(k3);
 
-        // Kartu 4: Belum Dibayar
+        // Belum Dibayar
         JPanel k4 = buatKartu(root, startX + (kartuW + gap) * 3, startY, kartuW, kartuH);
         buatIsiKartu(k4, "BELUM DIBAYAR", "0 orang", DANGER);
         lblBelum = cariValueLabel(k4);
@@ -344,12 +299,9 @@ private void bukaFormEdit(int row, int idPenggajian) {
                 return (JLabel) c;
             }
         }
-        return new JLabel(); // fallback
+        return new JLabel(); 
     }
-
-    // ────────────────────────────────────────────────────────────────────────
-    // FILTER BAR
-    // ────────────────────────────────────────────────────────────────────────
+    //filter bar
     private void buatFilterBar(JPanel root) {
         JPanel filterPanel = new JPanel(null);
         filterPanel.setBackground(Color.WHITE);
@@ -378,10 +330,7 @@ private void bukaFormEdit(int row, int idPenggajian) {
         btnFilter.setBounds(284, 12, 120, 28);
         filterPanel.add(btnFilter);
     }
-
-    // ────────────────────────────────────────────────────────────────────────
-    // TABEL DETAIL
-    // ────────────────────────────────────────────────────────────────────────
+    //tabel detail
     private void buatTabelDetail(JPanel root) {
         JLabel tblTitle = new JLabel("Detail Penggajian Pegawai");
         tblTitle.setFont(new Font("SansSerif", Font.BOLD, 13));
@@ -401,10 +350,7 @@ private void bukaFormEdit(int row, int idPenggajian) {
         btnRefresh.setBounds(190, 634, 120, 32);
         root.add(btnRefresh);
     }
-
-    // ────────────────────────────────────────────────────────────────────────
-    // STYLE TABLE — warna Status Lunas/Belum
-    // ────────────────────────────────────────────────────────────────────────
+    //style warna status
     private void styleTable(JTable t) {
         t.setFont(new Font("SansSerif", Font.PLAIN, 12));
         t.setRowHeight(32);
@@ -416,11 +362,14 @@ private void bukaFormEdit(int row, int idPenggajian) {
         t.setForeground(DARK);
 
         // Sembunyikan kolom ID (kolom 0)
-        if (t.getColumnCount() > 0) {
-            t.getColumnModel().getColumn(0).setMinWidth(0);
-            t.getColumnModel().getColumn(0).setMaxWidth(0);
-            t.getColumnModel().getColumn(0).setWidth(0);
-        }
+        int[] hidden = {0, 1, 8, 9};
+            for (int idx : hidden) {
+                if (t.getColumnCount() > idx) {
+                    t.getColumnModel().getColumn(idx).setMinWidth(0);
+                    t.getColumnModel().getColumn(idx).setMaxWidth(0);
+                    t.getColumnModel().getColumn(idx).setWidth(0);
+                }
+            }
 
         JTableHeader th = t.getTableHeader();
         th.setFont(new Font("SansSerif", Font.BOLD, 11));
@@ -431,37 +380,29 @@ private void bukaFormEdit(int row, int idPenggajian) {
 
         // Kolom Status (index 9) diberi warna hijau/merah
         int colStatus = t.getColumnCount() - 1;
+         t.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
+        @Override public Component getTableCellRendererComponent(
+                JTable tbl, Object val, boolean sel, boolean foc, int row, int col) {
+            super.getTableCellRendererComponent(tbl, val, sel, foc, row, col);
+            setForeground(DARK);
+            setBackground(row % 2 == 0 ? Color.WHITE : new Color(245, 247, 252));
+            if (sel) setBackground(new Color(66, 133, 244, 50));
+            setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
+            setFont(new Font("SansSerif", Font.PLAIN, 12));
 
-        t.setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
-            @Override public Component getTableCellRendererComponent(
-                    JTable tbl, Object val, boolean sel, boolean foc, int row, int col) {
-                super.getTableCellRendererComponent(tbl, val, sel, foc, row, col);
-                setForeground(DARK);
-                if (sel) {
-                    setBackground(new Color(66, 133, 244, 50));
+            if (col == 12 && val != null) { // kolom Status
+                if ("Lunas".equals(val.toString())) {
+                    setForeground(new Color(30, 160, 80));
                 } else {
-                    setBackground(row % 2 == 0 ? Color.WHITE : new Color(245, 247, 252));
+                    setForeground(DANGER);
                 }
-                setBorder(BorderFactory.createEmptyBorder(0, 10, 0, 10));
-
-                // Warna khusus kolom Status
-                if (col == colStatus && val != null) {
-                    if ("Lunas".equals(val.toString())) {
-                        setForeground(new Color(30, 160, 80));
-                        setFont(getFont().deriveFont(Font.BOLD));
-                    } else {
-                        setForeground(DANGER);
-                        setFont(getFont().deriveFont(Font.BOLD));
-                    }
-                } else {
-                    setFont(new Font("SansSerif", Font.PLAIN, 12));
-                }
-                return this;
+                setFont(getFont().deriveFont(Font.BOLD));
             }
-        });
-    }
+            return this;
+        }
+    });
+}
 
-    // ── Helpers ──────────────────────────────────────────────────────────────
     private void styleLabel(JLabel l) {
         l.setFont(new Font("SansSerif", Font.BOLD, 11));
         l.setForeground(LABEL_CLR);

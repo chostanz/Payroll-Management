@@ -41,8 +41,7 @@ public class PenggajianDAO {
     }
     return result;
 }
-    
-    // Simpan/update gaji dasar ke tabel detail sesuai jenis
+    // Simpan gaji dasar ke tabel detail sesuai jenis
     public void simpanGajiDasar(int idPegawai, String jenisPegawai, double gajiPokok, double tunjangan) {
         try {
             String queryCheck = "";
@@ -101,7 +100,7 @@ public class PenggajianDAO {
         } catch (Exception e) {
             System.out.println("simpanGajiDasar: " + e.getMessage());
         }
-}
+    }
     // INSERT
     public void insertPenggajian(Penggajian p) {
         try {
@@ -168,5 +167,40 @@ public class PenggajianDAO {
             System.out.println(
                     e.getMessage());
         }
+    }
+    public void updatePenggajian(
+        int idPenggajian,
+        double gajiKotor,
+        double totalPotongan,
+        double gajiBersih,
+        double bonus,
+        int jumlahTerlambat
+    ) {
+    try {
+
+        String query =
+            "UPDATE penggajian SET " +
+            "bonus=?, " +
+            "jumlah_terlambat=?, " +
+            "gaji_kotor=?, " +
+            "total_potongan=?, " +
+            "gaji_bersih=? " +
+            "WHERE id_penggajian=?";
+
+        PreparedStatement ps = conn.prepareStatement(query);
+
+        ps.setDouble(1, bonus);
+        ps.setInt(2, jumlahTerlambat);
+        ps.setDouble(3, gajiKotor);
+        ps.setDouble(4, totalPotongan);
+        ps.setDouble(5, gajiBersih);
+        ps.setInt(6, idPenggajian);
+
+        ps.executeUpdate();
+
+    } catch (Exception e) {
+
+        System.out.println(e.getMessage());
+    }
     }
 }
