@@ -330,7 +330,7 @@ public class PenggajianView extends JFrame {
 
                 dispose();
                 } catch (NumberFormatException ex) {
-                    JOptionPane.showMessageDialog(null, "Mohon isi semua data dengan angka yang valid");
+                    JOptionPane.showMessageDialog(null, "Mohon isi semua data dengan angka yang valid" + ex.getMessage());
                 } catch (Exception ex) {
                     JOptionPane.showMessageDialog(null, ex.getMessage());
                 }
@@ -341,7 +341,7 @@ public class PenggajianView extends JFrame {
                 areaSlip.print(); 
                 JOptionPane.showMessageDialog(null,"Slip gaji berhasil dicetak.");
             }catch (Exception ex) { 
-                JOptionPane.showMessageDialog(null, ex.getMessage()); }
+                JOptionPane.showMessageDialog(null, "Slip gaji gagal dicetak. " + ex.getMessage()); }
         });
     }
     
