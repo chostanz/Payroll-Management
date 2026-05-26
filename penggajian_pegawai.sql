@@ -2,6 +2,10 @@ SET SQL_MODE = "NO_AUTO_VALUE_ON_ZERO";
 START TRANSACTION;
 SET time_zone = "+00:00";
 
+CREATE DATABASE penggajian_pegawai;
+
+USE penggajian_pegawai;
+
 CREATE TABLE `pegawai` (
   `id_pegawai` int(11) NOT NULL,
   `nik` varchar(20) NOT NULL,
