@@ -103,14 +103,17 @@ public class RekapPenggajianView extends JFrame {
                 double bonus        = Double.parseDouble(tableDetail.getValueAt(row, 8).toString());
                 int    terlambat    = Integer.parseInt(tableDetail.getValueAt(row, 9).toString());
 
-                new PenggajianView(
-                    idPenggajian,
-                    idPegawai,
-                    nama,
-                    jenis,
-                    bonus,
-                    terlambat
-                ).setVisible(true);
+                PenggajianView penggajianView = new PenggajianView(idPenggajian, idPegawai, nama, jenis, bonus, terlambat);
+
+                // Panggil muatData() otomatis saat PenggajianView ditutup
+                penggajianView.addWindowListener(new WindowAdapter() {
+                    @Override
+                    public void windowClosed(WindowEvent e) {
+                        muatData();
+                    }
+                });
+
+                penggajianView.setVisible(true);
             });
 
             // TANDAI LUNAS
